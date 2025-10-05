@@ -1,0 +1,227 @@
+{
+  "name": "BioScience RAG",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.body.message }}",
+        "options": {
+          "systemMessage": "You are an expert scientific RAG assistant specializing in NASA bioscience. \nYour role is to answer the USER QUESTION by strictly synthesizing the information found in the CONTEXT section of Vector Search Plugin.\nIf the CONTEXT does not contain the answer, you MUST state, \"I cannot find the answer in the provided scientific documents.\"\nAlways cite the original source link included in the context.\n\nCONTEXT:\n{{context}}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "96afcf70-d5cc-4cd3-af40-ecd455dfda6b",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        160,
+        208
+      ],
+      "id": "68029e9f-1ee0-4a29-8f4b-9b295da092e8",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "XUY9HCUQavRljqcy",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelName": "intfloat/multilingual-e5-large",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsHuggingFaceInference",
+      "typeVersion": 1,
+      "position": [
+        480,
+        432
+      ],
+      "id": "7c65e0d7-e2cb-4945-9b89-681f008670b7",
+      "name": "Embeddings HuggingFace Inference",
+      "credentials": {
+        "huggingFaceApi": {
+          "id": "H8oMSKGCRAC8QQEV",
+          "name": "HuggingFaceApi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "Use this data to create an answer.",
+        "tableName": "documents",
+        "options": {
+          "columnNames": {
+            "values": {
+              "contentColumnName": "chunk_text",
+              "metadataColumnName": "chunk_metadata"
+            }
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePGVector",
+      "typeVersion": 1.3,
+      "position": [
+        480,
+        288
+      ],
+      "id": "846c66de-26f1-4485-8ad7-e5dc33e945cf",
+      "name": "Vector Search Plugin",
+      "credentials": {
+        "postgres": {
+          "id": "qxCnZgRH9Qxv2tua",
+          "name": "Vector Embedding 2nd"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        768,
+        0
+      ],
+      "id": "64205cbb-ac1b-495c-be22-9decd18cace5",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "biosciencerag",
+        "authentication": "headerAuth",
+        "responseMode": "streaming",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        176,
+        0
+      ],
+      "id": "de5bfbd0-fc92-4673-aa49-bbc41bd30096",
+      "name": "Webhook",
+      "webhookId": "6ec365d9-1246-4e87-9923-6f6eff8f5a3a",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "y0gKx1fEfK4eFpTe",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.body.sessionId }}",
+        "contextWindowLength": 4
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        480,
+        160
+      ],
+      "id": "4aacf0a9-8c6b-46f9-8b04-211f8e59695b",
+      "name": "Simple Memory"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings HuggingFace Inference": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Vector Search Plugin",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Vector Search Plugin": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "a8bd76cb-5742-4458-b85f-e3d42b54e234",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "73654c8d56a0b87cdc089ab37cf2118943b61a6b342a57d0cb7a33acb3ef385d"
+  },
+  "id": "Yg59RONmkdIwCTv3",
+  "tags": []
+}
